@@ -1,13 +1,27 @@
 from pathlib import Path
 import os
+import sys
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+def _get_runtime_base_dir():
+	if getattr(sys, 'frozen', False):
+		return Path(sys.executable).resolve().parent
+	return Path(__file__).resolve().parent.parent.parent
+
+
+BASE_DIR = _get_runtime_base_dir()
 
 
 def _load_dotenv():
-	env_path = BASE_DIR / '.env'
-	if not env_path.exists():
+	candidate_paths = [
+		BASE_DIR / '.env',
+		Path.cwd() / '.env',
+	]
+
+	for env_path in candidate_paths:
+		if env_path.exists():
+			break
+	else:
 		return
 
 	for raw_line in env_path.read_text(encoding='utf-8').splitlines():

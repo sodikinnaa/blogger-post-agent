@@ -1,11 +1,18 @@
 from pathlib import Path
+import sys
 
 from api.response.response_template import response_template
 
 
+def _get_runtime_base_dir():
+	if getattr(sys, 'frozen', False):
+		return Path(sys.executable).resolve().parent
+	return Path(__file__).resolve().parent.parent
+
+
 class SystemPrompt:
 	def __init__(self, prompt_dir='promt'):
-		self.base_dir = Path(__file__).resolve().parent.parent
+		self.base_dir = _get_runtime_base_dir()
 		self.prompt_dir = self.base_dir / prompt_dir
 
 	def _resolve_prompt_path(self, file_name):

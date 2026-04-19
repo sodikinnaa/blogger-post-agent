@@ -1,9 +1,11 @@
 from pathlib import Path
+import sys
 import time
 
 import httplib2
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
+from oauth2client.client import HttpAccessTokenRefreshError
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run_flow
@@ -11,12 +13,18 @@ from oauth2client.tools import run_flow
 from api.response.response_template import response_template
 
 
+def _get_runtime_base_dir():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
 class BloggerClient:
     SCOPE = "https://www.googleapis.com/auth/blogger"
     DISCOVERY_URL = "https://blogger.googleapis.com/$discovery/rest?version=v3"
 
     def __init__(self, secret_path=None, credential_path=None, retry_delay=5):
-        base_path = Path(__file__).resolve().parent
+        base_path = _get_runtime_base_dir()
         credential_dir = base_path / "credential/blogs"
         self.secret_path = Path(secret_path or credential_dir / "secret.json")
         self.credential_path = Path(
@@ -40,7 +48,7 @@ class BloggerClient:
     def create_storage(self):
         try:
             self.credential_path.parent.mkdir(parents=True, exist_ok=True)
-            self.authorize_credentials()
+            self.authorize_credentials(force_reauth=True)
             return response_template(
                 status="success",
                 message="Storage credential berhasil dibuat",
@@ -89,6 +97,8 @@ class BloggerClient:
                 data=data,
                 meta=self._meta("credentials.status"),
             )
+        except HttpAccessTokenRefreshError as error:
+            return self._build_reauth_response("credentials.status", error)
         except Exception as error:
             return response_template(
                 status="error",
@@ -100,12 +110,23 @@ class BloggerClient:
                 ),
             )
 
-    def authorize_credentials(self):
+    def _delete_credential_storage(self):
+        if self.credential_path.exists():
+            self.credential_path.unlink()
+
+    def authorize_credentials(self, force_reauth=False):
         self.credential_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.secret_path.exists():
             raise FileNotFoundError(
                 f"Secret file tidak ditemukan di {self.secret_path}"
             )
+
+        if force_reauth:
+            self._delete_credential_storage()
+            storage = Storage(str(self.credential_path))
+            flow = flow_from_clientsecrets(str(self.secret_path), scope=self.SCOPE)
+            http = httplib2.Http()
+            return run_flow(flow, storage, http=http)
 
         storage = Storage(str(self.credential_path))
         credentials = storage.get()
@@ -117,15 +138,45 @@ class BloggerClient:
 
         return credentials
 
-    def get_service(self):
-        credentials = self.authorize_credentials()
-        http = credentials.authorize(httplib2.Http())
-        return discovery.build(
-            "blogger",
-            "v3",
-            http=http,
-            discoveryServiceUrl=self.DISCOVERY_URL,
+    def _build_reauth_response(self, operation, error, blog_id=None, payload=None):
+        return response_template(
+            status="error",
+            message=(
+                "Credential Blogger tidak valid atau sudah kedaluwarsa. "
+                "Hapus file credentials.storage lalu otorisasi ulang aplikasi."
+            ),
+            data={},
+            meta=self._meta(
+                operation,
+                blog_id=blog_id,
+                extra={
+                    "exception_type": type(error).__name__,
+                    "original_error": str(error),
+                    "payload_status": payload.get("status") if isinstance(payload, dict) else None,
+                    "label_count": len(payload.get("labels", [])) if isinstance(payload, dict) else 0,
+                },
+            ),
         )
+
+    def get_service(self):
+        try:
+            credentials = self.authorize_credentials()
+            http = credentials.authorize(httplib2.Http())
+            return discovery.build(
+                "blogger",
+                "v3",
+                http=http,
+                discoveryServiceUrl=self.DISCOVERY_URL,
+            )
+        except HttpAccessTokenRefreshError:
+            credentials = self.authorize_credentials(force_reauth=True)
+            http = credentials.authorize(httplib2.Http())
+            return discovery.build(
+                "blogger",
+                "v3",
+                http=http,
+                discoveryServiceUrl=self.DISCOVERY_URL,
+            )
 
     def post_to_blogger(self, payload, blog_id):
         try:
@@ -197,6 +248,13 @@ class BloggerClient:
                         },
                     ),
                 )
+        except HttpAccessTokenRefreshError as error:
+            return self._build_reauth_response(
+                "posts.insert",
+                error,
+                blog_id=blog_id,
+                payload=payload,
+            )
         except Exception as error:
             return response_template(
                 status="error",
