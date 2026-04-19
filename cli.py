@@ -12,6 +12,23 @@ blogger_client = BloggerClient()
 system_prompt_client = SystemPrompt()
 
 
+def _normalize_blogger_status(status):
+    if not isinstance(status, str) or not status.strip():
+        return "DRAFT"
+
+    normalized = status.strip().upper()
+    status_map = {
+        "PUBLISH": "LIVE",
+        "PUBLISHED": "LIVE",
+        "LIVE": "LIVE",
+        "PUBLIC": "LIVE",
+        "DRAFT": "DRAFT",
+        "SCHEDULE": "SCHEDULED",
+        "SCHEDULED": "SCHEDULED",
+    }
+    return status_map.get(normalized, "DRAFT")
+
+
 def _extract_generated_article(result):
     if not isinstance(result, dict) or result.get("status") != "success":
         return None
@@ -60,22 +77,58 @@ def _build_blogger_payload(article):
         "title": title,
         "content": "\n".join(content_parts),
         "labels": labels,
-        "status": status.upper(),
+        "status": _normalize_blogger_status(status),
     }
 
 
 def generate_article():
     user_prompt = input("Masukkan prompt artikel: ").strip()
     if not user_prompt:
-        print({
-            "status": "error",
-            "message": "Prompt artikel tidak boleh kosong",
-        })
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "message": "Prompt artikel tidak boleh kosong",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return
+
+    if not BLOG_ID:
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "message": "BLOG_ID belum diatur di file .env",
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     prompt_result = system_prompt_client.getSystemPrompt("CONTENT_WRITER.md")
     if not isinstance(prompt_result, dict) or prompt_result.get("status") != "success":
-        print(prompt_result)
+        print(json.dumps(prompt_result, indent=2, ensure_ascii=False))
+        return
+
+    credential_status = blogger_client.get_credential_status()
+    if not isinstance(credential_status, dict) or credential_status.get("status") != "success":
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "message": "Generate artikel dibatalkan karena credential Blogger belum siap",
+                    "data": {
+                        "credential_status": credential_status,
+                    },
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
         return
 
     system_prompt = prompt_result.get("data", "")
@@ -110,6 +163,7 @@ def generate_article():
         json.dumps(
             {
                 "generate_result": result,
+                "blogger_payload": blogger_payload,
                 "publish_result": publish_result,
             },
             indent=2,

@@ -56,7 +56,7 @@
     "meta_description": "Meta description",
     "content": "Konten final siap publish tanpa diberikan h1, langung paragraf pendahuluan",
     "labels":["category1", "category2", "category3"],
-    "status":"publish",
+    "status":"live",
     "thumbnail_url": "https://example.com/thumbnail.jpg dengan ukuran 16:9"
   }
 ]
