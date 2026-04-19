@@ -50,16 +50,12 @@
 ## Output Wajib per Artikel wajib dalam bentuk json
 [
   {
-    "judul": "Judul artikel",
-    "tanggal_create"="tanggal sekarang",
-    "topik": "topik tentang artikel",
-    "keyword": "Keyword utama",
-    "target_audiens": "Target audiens singkat",
+    "title": "Judul artikel",
+    "content"="tanggal sekarang",
     "meta_description": "Meta description",
-    "slug": "slug-artikel",
     "content": "Konten final siap publish tanpa diberikan h1, langung paragraf pendahuluan",
-    "category":"category dari artikel dengan dipisahkan dengan koma",
-    "status":"draft",
+    "labels":["category1", "category2", "category3"],
+    "status":"publish",
     "thumbnail_url": "https://example.com/thumbnail.jpg"
   }
 ]
