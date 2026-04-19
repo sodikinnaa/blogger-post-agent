@@ -95,6 +95,9 @@ Menu yang tersedia:
 2. `Generate artikel`
 3. `q` untuk keluar
 
+Opsi `1` akan mencoba menjalankan otorisasi OAuth Blogger bila file `credentials.storage`
+belum ada atau credential yang tersimpan sudah tidak valid.
+
 ## Alur Generate Artikel
 
 Saat memilih `Generate artikel`, aplikasi akan:
@@ -170,6 +173,9 @@ api/credential/blogs/secret.json
 ```
 
 Lalu jalankan opsi `1. Cek status Blogger credential`.
+
+Jika browser otorisasi tidak terbuka, pastikan environment lokal mengizinkan membuka URL login Google
+dan selesaikan consent screen sampai aplikasi kembali membuat file `credentials.storage`.
 
 ### BLOG_ID belum diatur
 

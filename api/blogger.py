@@ -45,6 +45,19 @@ class BloggerClient:
             meta.update(extra)
         return meta
 
+    def _is_deleted_client_error(self, error):
+        return "deleted_client" in str(error).lower()
+
+    def _build_auth_error_message(self, error):
+        if self._is_deleted_client_error(error):
+            return (
+                "OAuth client pada secret.json sudah tidak valid atau sudah dihapus dari Google Cloud. "
+                "Buat OAuth Client ID baru, aktifkan Blogger API, unduh credential JSON terbaru, "
+                "lalu ganti file secret.json yang dipakai aplikasi."
+            )
+
+        return str(error)
+
     def create_storage(self):
         try:
             self.credential_path.parent.mkdir(parents=True, exist_ok=True)
@@ -60,11 +73,14 @@ class BloggerClient:
         except Exception as error:
             return response_template(
                 status="error",
-                message=str(error),
+                message=self._build_auth_error_message(error),
                 data={},
                 meta=self._meta(
                     "storage.create",
-                    extra={"exception_type": type(error).__name__},
+                    extra={
+                        "exception_type": type(error).__name__,
+                        "original_error": str(error),
+                    },
                 ),
             )
 
@@ -122,11 +138,14 @@ class BloggerClient:
         except Exception as error:
             return response_template(
                 status="error",
-                message=str(error),
+                message=self._build_auth_error_message(error),
                 data=data,
                 meta=self._meta(
                     "credentials.status",
-                    extra={"exception_type": type(error).__name__},
+                    extra={
+                        "exception_type": type(error).__name__,
+                        "original_error": str(error),
+                    },
                 ),
             )
 
@@ -278,13 +297,14 @@ class BloggerClient:
         except Exception as error:
             return response_template(
                 status="error",
-                message=str(error),
+                message=self._build_auth_error_message(error),
                 data={},
                 meta=self._meta(
                     "posts.insert",
                     blog_id=blog_id,
                     extra={
                         "exception_type": type(error).__name__,
+                        "original_error": str(error),
                         "payload_status": payload.get("status"),
                         "label_count": len(payload.get("labels", [])),
                     },
