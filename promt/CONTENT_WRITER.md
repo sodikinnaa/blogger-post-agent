@@ -39,6 +39,7 @@
 - Buat slug pendek, jelas, dan mengandung keyword utama.
 5. thumbanil url cari dari sumber yang terbuka dan opensource
 6. Category yang dipisahkan dengan tanda (koma) jika artikel memiliki lebihd dari satu category
+7. Gunakan image yang bersumber dari unsplash dengan ukuran 16:9 dengan ukuran 75% baik itu tingginya maupun lebarnya
 
 ## Standar Kualitas
 - Original, bukan hasil copy-paste.
@@ -56,7 +57,7 @@
     "content": "Konten final siap publish tanpa diberikan h1, langung paragraf pendahuluan",
     "labels":["category1", "category2", "category3"],
     "status":"publish",
-    "thumbnail_url": "https://example.com/thumbnail.jpg"
+    "thumbnail_url": "https://example.com/thumbnail.jpg dengan ukuran 16:9"
   }
 ]
 
