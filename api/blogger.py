@@ -68,7 +68,7 @@ class BloggerClient:
                 ),
             )
 
-    def get_credential_status(self):
+    def get_credential_status(self, auto_authorize=False):
         secret_exists = self.secret_path.exists()
         storage_exists = self.credential_path.exists()
 
@@ -78,12 +78,31 @@ class BloggerClient:
             "secret_path": str(self.secret_path),
             "credential_path": str(self.credential_path),
             "is_authorized": False,
+            "needs_reauthorization": False,
         }
 
         if not secret_exists:
             return response_template(
                 status="error",
                 message="Secret file Blogger belum tersedia",
+                data=data,
+                meta=self._meta("credentials.status"),
+            )
+
+        if not auto_authorize:
+            if storage_exists:
+                data["is_authorized"] = True
+                return response_template(
+                    status="success",
+                    message="File credential Blogger ditemukan",
+                    data=data,
+                    meta=self._meta("credentials.status"),
+                )
+
+            data["needs_reauthorization"] = True
+            return response_template(
+                status="warning",
+                message="Credential storage belum tersedia. Jalankan otorisasi Blogger saat diperlukan.",
                 data=data,
                 meta=self._meta("credentials.status"),
             )
@@ -98,6 +117,7 @@ class BloggerClient:
                 meta=self._meta("credentials.status"),
             )
         except HttpAccessTokenRefreshError as error:
+            data["needs_reauthorization"] = True
             return self._build_reauth_response("credentials.status", error)
         except Exception as error:
             return response_template(

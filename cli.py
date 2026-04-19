@@ -114,8 +114,15 @@ def generate_article():
         print(json.dumps(prompt_result, indent=2, ensure_ascii=False))
         return
 
-    credential_status = blogger_client.get_credential_status()
-    if not isinstance(credential_status, dict) or credential_status.get("status") != "success":
+    credential_status = blogger_client.get_credential_status(auto_authorize=False)
+    credential_data = credential_status.get("data", {}) if isinstance(credential_status, dict) else {}
+    credential_ready = (
+        isinstance(credential_status, dict)
+        and credential_status.get("status") == "success"
+        and credential_data.get("secret_file_exists")
+    )
+
+    if not credential_ready:
         print(
             json.dumps(
                 {
@@ -173,7 +180,7 @@ def generate_article():
 
 
 def check_blogger_credential_status():
-    result = blogger_client.get_credential_status()
+    result = blogger_client.get_credential_status(auto_authorize=False)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 while True:
